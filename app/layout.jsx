@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata = {
-  title: "Acville",
+  title: "Aucville",
   description: "Real-time bidding. Verified sellers. Secure shipping.",
 };
 

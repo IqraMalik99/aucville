@@ -29,7 +29,8 @@ export async function POST(req) {
       startingPrice == null ||
       !category ||
       !endTime ||
-      !packageDetails
+      !packageDetails ||
+      !owner
     ) {
       return NextResponse.json(
         {

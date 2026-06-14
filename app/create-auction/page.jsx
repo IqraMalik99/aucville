@@ -95,6 +95,7 @@ function BlockerModal({ reason, onLogin, onAddAddress }) {
 export default function CreateAuction() {
     const fileRef = useRef(null);
     const { data: session, status } = useSession();
+    console.log("SESSION:", session.user, "STATUS:", status);
     const router = useRouter();
 
     // "not-logged-in" | "no-address" | null
@@ -224,7 +225,7 @@ export default function CreateAuction() {
                         weight: parseFloat(form.weight), length: parseFloat(form.length),
                         width: parseFloat(form.width),   height: parseFloat(form.height),
                     },
-                    owner: session?.user?._id || null,   // replace with user ID if available
+                    owner: session?.user?.id || null,   // replace with user ID if available
                 }),
             });
             if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.message || `Server error ${res.status}`); }

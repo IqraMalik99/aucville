@@ -58,7 +58,7 @@ export const authOptions = {
           username: user.name,
           email: user.email,
           address: null,
-          password: "123"
+          password: "google_oauth", // placeholder, not used
         });
       }
 

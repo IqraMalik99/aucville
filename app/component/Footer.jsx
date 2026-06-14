@@ -197,7 +197,7 @@ export default function Footer() {
           <div className="ft-top">
             <div className={`ft-brand anim ${visible ? "go d1" : ""}`}>
               <div className="ft-logo" onClick={() => router.push("/")}>
-                <span>Acville</span>
+                <span>Aucville</span>
               </div>
               <div className="ft-tagline">
                 Real-time bidding on thousands of items. Verified sellers. Every purchase protected.

@@ -217,7 +217,7 @@ export default function Navbar() {
           <div className="logo-mark">
             <ShoppingCart size={18} stroke="#52B788" strokeWidth={2.2} />
           </div>
-          <span className="logo-text">Ac<span>ville</span></span>
+          <span className="logo-text">Auc<span>ville</span></span>
         </a>
 
         <nav className="desktop-nav">
