@@ -8,7 +8,7 @@ import { connectDB } from "../../../lib/db";
 import User from "../../../schema/user";
 
 export const authOptions = {
-      providers: [
+  providers: [
     // GOOGLE LOGIN
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID,
@@ -47,31 +47,46 @@ export const authOptions = {
   },
 
   callbacks: {
-    async signIn({ user }) {
-      await connectDB();
+    async signIn({ user, account }) {
+      if (account.provider === "google") {
+        await connectDB();
 
-      // Google login: auto create user if not exists
-      const existingUser = await User.findOne({ email: user.email });
+        const existingUser = await User.findOne({ email: user.email });
 
-      if (!existingUser) {
-        await User.create({
-          username: user.name,
-          email: user.email,
-          address: null,
-          password: "google_oauth", // placeholder, not used
-        });
+        if (!existingUser) {
+          await User.create({
+            username: user.name,
+            email: user.email,
+            address: null,
+            password: "google_oauth",
+          });
+        }
       }
 
       return true;
     },
 
-    async jwt({ token, user }) {
-      if (user) token.user = user;
+    async jwt({ token, user, account }) {
+      if (user) {
+        if (account?.provider === "google") {
+          await connectDB();
+          const dbUser = await User.findOne({ email: user.email });
+          token.id = dbUser?._id?.toString();
+        } else {
+          token.id = user._id?.toString();
+        }
+        token.email = user.email;
+        token.name = user.name || user.username;
+      }
       return token;
     },
 
     async session({ session, token }) {
-      session.user = token.user;
+      session.user = {
+        id: token.id,
+        email: token.email,
+        name: token.name,
+      };
       return session;
     },
   },

@@ -95,7 +95,7 @@ function BlockerModal({ reason, onLogin, onAddAddress }) {
 export default function CreateAuction() {
     const fileRef = useRef(null);
     const { data: session, status } = useSession();
-    console.log("SESSION:", session.user, "STATUS:", status);
+    // console.log("SESSION:", session.user, "STATUS:", status);
     const router = useRouter();
 
     // "not-logged-in" | "no-address" | null

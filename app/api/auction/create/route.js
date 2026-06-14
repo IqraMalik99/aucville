@@ -1,6 +1,7 @@
 import { connectDB } from "../../../lib/db";
 import Auction from "../../../schema/auction";
 import { NextResponse } from "next/server";
+import mongoose from "mongoose";
 
 export async function POST(req) {
   try {
@@ -57,11 +58,11 @@ export async function POST(req) {
         { status: 400 }
       );
     }
-
+const ownerId = new mongoose.Types.ObjectId(owner);
     const auction = await Auction.create({
       // remove this if owner required=false
       // otherwise replace with logged-in user id
-      owner,
+      owner: ownerId,
 
       title: title.trim(),
       imageUrl,
