@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
@@ -8,10 +8,10 @@ import CheckoutForm from "../component/Checkout";
 import convertToSubcurrency from "../lib/convert";
 import Navbar from "../component/Navbar";
 
-if (!process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY) {
-  throw new Error("NEXT_PUBLIC_STRIPE_PUBLIC_KEY is not defined");
-}
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY);
+// Don't throw at module scope — that crashes the whole build if the env
+// var isn't present at build time. Guard it instead and handle gracefully.
+const STRIPE_PUBLIC_KEY = process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY;
+const stripePromise = STRIPE_PUBLIC_KEY ? loadStripe(STRIPE_PUBLIC_KEY) : null;
 
 const STATUS_META = {
   pending_payment: { label: "Awaiting Payment", color: "#d97706", bg: "rgba(251,191,36,0.12)", dot: "#f59e0b" },
@@ -101,7 +101,7 @@ function DeliveryEstimateCard({ receiverAddress }) {
   );
 }
 
-export default function CheckoutPage() {
+function CheckoutPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const orderId = searchParams.get("orderId");
@@ -148,7 +148,7 @@ export default function CheckoutPage() {
 
   const itemAmount = order ? Number(order.amount) : 0;
   const totalAmount = shippingPrice != null ? itemAmount + shippingPrice : itemAmount;
-  const readyForPayment = !!order && shippingPrice != null;
+  const readyForPayment = !!order && shippingPrice != null && !!stripePromise;
 
   return (
     <>
@@ -385,7 +385,15 @@ export default function CheckoutPage() {
                     </svg>
                   </div>
                   <div className="co-card-body">
-                    {!readyForPayment && !shippingError && (
+                    {!stripePromise && (
+                      <div className="co-payment-pending">
+                        <p style={{ color: "#dc2626" }}>
+                          Payments aren't configured (missing Stripe public key). Contact support.
+                        </p>
+                      </div>
+                    )}
+
+                    {stripePromise && !readyForPayment && !shippingError && (
                       <div className="co-payment-pending">
                         <svg className="co-spin" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a7a48" strokeWidth="3">
                           <circle cx="12" cy="12" r="10" opacity="0.25" />
@@ -395,7 +403,7 @@ export default function CheckoutPage() {
                       </div>
                     )}
 
-                    {!readyForPayment && shippingError && (
+                    {stripePromise && !readyForPayment && shippingError && (
                       <div className="co-payment-pending">
                         <p style={{ color: "#dc2626" }}>{shippingError}</p>
                         <button className="co-retry" onClick={fetchShippingRate}>Try again</button>
@@ -465,5 +473,13 @@ function LoadingSkeleton() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense fallback={<LoadingSkeleton />}>
+      <CheckoutPageInner />
+    </Suspense>
   );
 }
