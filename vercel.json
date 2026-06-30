@@ -3,6 +3,10 @@
     {
       "path": "/api/test-cron",
       "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/fedex/track",
+      "schedule": "0 0 * * *"
     }
   ]
 }

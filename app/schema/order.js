@@ -24,14 +24,20 @@ const orderSchema = new mongoose.Schema({
   amount: Number,
   shippingAmount: { type: Number, default: null },
   totalAmount: { type: Number, default: null },
+  //fedex
   trackingNumber: { type: String, default: null },
   pickupConfirmationCode: String,
   pickupLocation: String,
   pickupScheduledAt: Date,
   pickupReadyAt: Date,
   labelBase64: { type: String, default: null },
-  paymentIntentId: String, // store Stripe PaymentIntent ID for later reference
-  status: { type: String, enum: ["pending_payment","paid","labelled","pickup_scheduled","shipped","delivered", "cancelled"], default: "pending_payment" },
+  //seller stripe
+  sellerPaidAt: { type: Date, default: null },
+  sellerPayoutAmount: { type: Number, default: null },
+  stripeTransferId: { type: String, default: null },
+// store Stripe PaymentIntent ID for later reference buyer pays
+  paymentIntentId: String,
+  status: { type: String, enum: ["pending_payment", "paid", "labelled", "pickup_scheduled", "shipped", "delivered", "cancelled"], default: "pending_payment" },
 }, { timestamps: true });
 
 export default mongoose.models.Order || mongoose.model("Order", orderSchema);

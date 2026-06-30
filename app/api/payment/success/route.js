@@ -246,40 +246,34 @@ export async function POST(req) {
       ];
     }
 
-    await sendEmail(sellerEmailPayload);
+ await sendEmail(sellerEmailPayload);
 
-  try {
-  const pickupRes = await fetch(
-    `${process.env.NEXT_PUBLIC_BASE_URL}/api/fedex/pickup`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderId }),
+    // ── Schedule FedEx pickup (non-blocking) ──
+    let pickupError = null;
+    try {
+      const pickupRes = await fetch(
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/fedex/pickup`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId }),
+        }
+      );
+
+      const pickupData = await pickupRes.json();
+      console.log("Pickup Response:", pickupData);
+
+      if (!pickupData.success) {
+        pickupError = pickupData.error || "FedEx pickup creation failed";
+        console.error("FedEx Pickup Error:", pickupError);
+      }
+    } catch (error) {
+      pickupError = error.message || "FedEx pickup creation failed";
+      console.error("FedEx Pickup Error:", pickupError);
+      // Non-blocking — don't throw, let the response go through
     }
-  );
 
- 
-
-  const pickupData = await pickupRes.json();
-
-  console.log("Pickup Response:", pickupData);
-
-  if (!pickupData.success) {
-    throw new Error(
-      pickupData.error || "FedEx pickup creation failed"
-    );
-  }
-
-  return pickupData;
-} catch (error) {
-  console.error("FedEx Pickup Error:", error);
-
-  throw new Error(
-    error.message || "FedEx pickup creation failed"
-  );
-}
-
-
+    // ── Final response ──
     return Response.json({
       success: true,
       message: "Payment verified, shipment created, and emails sent",
@@ -287,11 +281,11 @@ export async function POST(req) {
         ? { trackingNumber: shipment.trackingNumber, serviceType: shipment.serviceType }
         : null,
       shipError,
+      pickupError,
     });
 
   } catch (error) {
     console.error(error);
-
     return Response.json(
       { error: "Internal server error" },
       { status: 500 }

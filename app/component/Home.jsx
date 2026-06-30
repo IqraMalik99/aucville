@@ -12,22 +12,23 @@ const PLACEHOLDERS = [
 
 // ── Card stack data ──
 const LOTS = [
-  { lotNo: "0148", item: "Vintage Leica M6, Black Paint", bid: "$2,140", bidders: "14", closes: "06:12 am", stub: "4471-A" },
-  { lotNo: "0149", item: "Mid-Century Walnut Sideboard", bid: "$980", bidders: "9", closes: "11:47 pm", stub: "4471-B" },
-  { lotNo: "0150", item: "Rolex Datejust, Steel & Gold", bid: "$6,400", bidders: "27", closes: "02:35 pm", stub: "4471-C" },
-  { lotNo: "0151", item: "1967 Gibson SG Standard", bid: "$3,250", bidders: "18", closes: "19:02 am", stub: "4471-D" },
+  { lotNo: "0148", item: "Vintage Leica M6, Black Paint", bid: "$2,140", bidders: "14", closes: "06:12 am", stub: "4471-A", img: "https://images.unsplash.com/photo-1502920917128-1aa500764cbd?auto=format&fit=crop&w=500&q=70" },
+  { lotNo: "0149", item: "Mid-Century Walnut Sideboard", bid: "$980", bidders: "9", closes: "11:47 pm", stub: "4471-B", img: "https://images.unsplash.com/photo-1567016432779-094069958ea5?auto=format&fit=crop&w=500&q=70" },
+  { lotNo: "0150", item: "Rolex Datejust, Steel & Gold", bid: "$6,400", bidders: "27", closes: "02:35 pm", stub: "4471-C", img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=500&q=70" },
+  { lotNo: "0151", item: "1967 Gibson SG Standard", bid: "$3,250", bidders: "18", closes: "19:02 am", stub: "4471-D", img: "https://images.unsplash.com/photo-1525201548942-d8732f6617a0?auto=format&fit=crop&w=500&q=70" },
 ];
 
 // fixed alternating tilt per stack position — hand-dealt look, not random-per-render
 const TILTS = [-3.5, 4, -5.5, 3];
 
-// ── Desktop: fanned ticket stack, advances on click OR scroll ──
+// ── Desktop: fanned ticket stack — click the FRONT card to send it to the back ──
 function TicketStack({ lots }) {
   const [cards, setCards] = useState(lots);
   const wrapRef = useRef(null);
   const lastScrollY = useRef(0);
   const cooldown = useRef(false);
 
+  // cycle the whole stack forward by one — used by scroll
   const advance = useCallback(() => {
     if (cooldown.current) return;
     cooldown.current = true;
@@ -36,7 +37,19 @@ function TicketStack({ lots }) {
       next.unshift(next.pop());
       return next;
     });
-    setTimeout(() => { cooldown.current = false; }, 550);
+    setTimeout(() => { cooldown.current = false; }, 850);
+  }, []);
+
+  // send the front card to the back of the stack — used by click/tap
+  const sendToBack = useCallback((lotNo) => {
+    setCards((prev) => {
+      const idx = prev.findIndex((c) => c.lotNo === lotNo);
+      if (idx === -1) return prev;
+      const next = [...prev];
+      const [picked] = next.splice(idx, 1);
+      next.push(picked);
+      return next;
+    });
   }, []);
 
   // scroll-triggered advance — only while the stack is in/near viewport
@@ -58,41 +71,36 @@ function TicketStack({ lots }) {
   }, [advance]);
 
   return (
-    <div className="ticket-stack" ref={wrapRef} onClick={advance} role="button" tabIndex={0}
-      onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && advance()}
-      aria-label="Show next auction lot">
+    <div className="ticket-stack" ref={wrapRef} aria-label="Live auction lots">
       {cards.map((lot, index) => {
         const tilt = TILTS[index % TILTS.length];
         return (
           <motion.div
             key={lot.lotNo}
             className="ticket"
+            role="button"
+            tabIndex={index === 0 ? 0 : -1}
+            onClick={() => index === 0 && sendToBack(lot.lotNo)}
+            onKeyDown={(e) => index === 0 && (e.key === "Enter" || e.key === " ") && sendToBack(lot.lotNo)}
             initial={false}
             animate={{
               top: index * -14,
-              left: index * (index % 2 === 0 ? 0 : 0),
               x: index * (index % 2 === 0 ? 6 : -6),
               rotate: index === 0 ? 0 : tilt,
               scale: 1 - index * 0.055,
               opacity: index < 4 ? 1 - index * 0.16 : 0,
             }}
-            transition={{ duration: 0.5, ease: [0.22, 0.68, 0, 1.05] }}
-            style={{ zIndex: cards.length - index }}
+            whileHover={index === 0 ? { scale: 1.02, y: -4 } : {}}
+            transition={{ duration: 0.85, ease: [0.45, 0, 0.15, 1] }}
+            style={{ zIndex: cards.length - index, cursor: index === 0 ? "pointer" : "default" }}
           >
             <div className="ticket-discount">20% <span>off</span> buyer's premium</div>
 
-            <div className="ticket-top">
-              <div>
-                <div className="ticket-label">Lot</div>
-                <div className="ticket-lotnum">{lot.lotNo}</div>
-              </div>
+            <div className="ticket-img" style={{ backgroundImage: `url(${lot.img})` }}>
               <span className="ticket-badge"><span className="live-dot" />Live</span>
             </div>
 
             <div className="ticket-mid">
-              <div className="ticket-item-label">Now bidding</div>
-              <div className="ticket-item-name">{lot.item}</div>
-
               <div className="ticket-stats">
                 <div>
                   <div className="ticket-stat-label">Current bid</div>
@@ -108,16 +116,10 @@ function TicketStack({ lots }) {
                 </div>
               </div>
             </div>
-
-            <div className="ticket-notch-r" />
-            <div className="ticket-bottom">
-              <span className="ticket-foot-label">Admit one bidder</span>
-              <span className="ticket-stub-no">stub · {lot.stub}</span>
-            </div>
           </motion.div>
         );
       })}
-      <div className="ticket-hint">Click or scroll to browse lots</div>
+      <div className="ticket-hint">Click the front card or scroll to browse lots</div>
     </div>
   );
 }
@@ -219,11 +221,11 @@ export default function Hero() {
           flex-direction: column;
           background: #ffffff;
           font-family: 'Inter', 'Helvetica Neue', sans-serif;
-          overflow: hidden;
+          overflow-x: hidden;
           position: relative;
         }
 
-        .hero-bg { position: absolute; inset: 0; pointer-events: none; z-index: 0; transition: background 0.4s ease; }
+        .hero-bg { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; transition: background 0.4s ease; }
 
         .accent-bar {
           height: 3px;
@@ -288,43 +290,44 @@ export default function Hero() {
           font-weight: 400; letter-spacing: 0.1px;
         }
 
+        /* ════════ Search bar — small + fully rounded, desktop & mobile ════════ */
         .search-row {
-          display: flex; gap: 8px; max-width: 480px;
-          padding: 6px;
-          background: rgba(255,255,255,0.5);
+          display: flex; gap: 6px; max-width: 360px;
+          padding: 4px;
+          background: rgba(255,255,255,0.6);
           border: 1px solid rgba(10,31,20,0.1);
-          border-radius: 18px;
+          border-radius: 999px;
           backdrop-filter: blur(12px) saturate(160%);
           -webkit-backdrop-filter: blur(12px) saturate(160%);
-          box-shadow: 0 8px 24px rgba(10,31,20,0.06), inset 0 1px 0 rgba(255,255,255,0.6);
+          box-shadow: 0 6px 18px rgba(10,31,20,0.06), inset 0 1px 0 rgba(255,255,255,0.6);
           transition: box-shadow .25s ease, border-color .25s ease;
         }
         .search-row:focus-within {
           border-color: rgba(26,122,72,0.35);
-          box-shadow: 0 10px 28px rgba(10,31,20,0.09), 0 0 0 4px rgba(26,122,72,0.08);
+          box-shadow: 0 8px 22px rgba(10,31,20,0.09), 0 0 0 4px rgba(26,122,72,0.08);
         }
 
         .search-box {
           flex: 1; display: flex; align-items: center;
-          border-radius: 12px; padding: 0 14px;
-          gap: 10px; min-width: 0;
+          border-radius: 999px; padding: 0 12px;
+          gap: 8px; min-width: 0;
         }
         .search-input {
           flex: 1; border: none; outline: none;
-          font-size: 14px; color: #0a1f14;
-          background: transparent; padding: 13px 0;
+          font-size: 13px; color: #0a1f14;
+          background: transparent; padding: 9px 0;
           font-family: inherit; font-weight: 400; min-width: 0;
         }
         .search-input::placeholder { color: #8fada0; }
 
         .search-btn {
           background: #145c35; color: #fff;
-          border: none; border-radius: 12px;
-          padding: 0 24px; font-size: 13.5px;
+          border: none; border-radius: 999px;
+          padding: 0 18px; font-size: 12.5px;
           font-weight: 600; letter-spacing: 0.2px;
           cursor: pointer; font-family: 'Inter', sans-serif;
           transition: background .2s ease, transform .15s ease;
-          white-space: nowrap; height: 46px; flex-shrink: 0;
+          white-space: nowrap; height: 36px; flex-shrink: 0;
         }
         .search-btn:hover  { background: #0f4527; }
         .search-btn:active { transform: scale(0.97); }
@@ -351,6 +354,7 @@ export default function Hero() {
           display: flex;
           flex-direction: column;
           align-items: center;
+          margin-top: 22px; /* clearance so the discount ribbon never gets clipped */
         }
 
         .ticket-stack {
@@ -358,10 +362,8 @@ export default function Hero() {
           width: 100%;
           max-width: 340px;
           height: 300px;
-          cursor: pointer;
           user-select: none;
         }
-        .ticket-stack:focus-visible { outline: 2px solid #1a7a48; outline-offset: 6px; border-radius: 18px; }
 
         .ticket {
           position: absolute;
@@ -371,36 +373,33 @@ export default function Hero() {
           background: #ffffff;
           border: 1px solid rgba(10,31,20,0.12);
           border-radius: 18px;
-          padding: 28px 28px 24px;
+          padding: 0 28px 24px;
           box-shadow: 0 20px 50px rgba(10,31,20,0.1), 0 4px 14px rgba(10,31,20,0.05);
           display: flex;
           flex-direction: column;
         }
-        .ticket::before {
+        .ticket-img {
+          margin: 0 -28px 16px;
+          height: 130px;
+          background-size: cover;
+          background-position: center;
+          position: relative;
+          flex-shrink: 0;
+          border-radius: 17px 17px 0 0;
+          overflow: hidden;
+        }
+        .ticket-img::after {
           content: '';
-          position: absolute; left: -1px; right: -1px; bottom: 80px;
-          border-bottom: 1.5px dashed rgba(10,31,20,0.16);
+          position: absolute; inset: 0;
+          background: linear-gradient(180deg, rgba(10,31,20,0.05) 0%, rgba(10,31,20,0.35) 100%);
         }
-        .ticket::after {
-          content: '';
-          position: absolute; left: -7px; bottom: 73px;
-          width: 14px; height: 14px;
-          background: #ffffff;
-          border-radius: 50%;
-          border: 1px solid rgba(10,31,20,0.12);
-        }
-        .ticket-notch-r {
-          position: absolute; right: -7px; bottom: 73px;
-          width: 14px; height: 14px;
-          background: #ffffff;
-          border-radius: 50%;
-          border: 1px solid rgba(10,31,20,0.12);
-        }
-        .ticket-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+        .ticket-img .ticket-badge { position: absolute; top: 14px; right: 14px; z-index: 1; background: rgba(255,255,255,0.92); }
+        .ticket:focus-visible { outline: 2px solid #1a7a48; outline-offset: 4px; }
+        .ticket-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
         .ticket-label { font-size: 10px; color: #8a968d; font-weight: 600; letter-spacing: 1.6px; text-transform: uppercase; margin-bottom: 4px; }
         .ticket-lotnum { font-family: 'Fraunces', Georgia, serif; font-size: 24px; color: #0a1f14; font-weight: 400; }
         .ticket-badge { display: inline-flex; align-items: center; gap: 5px; background: rgba(26,122,72,0.08); border: 1px solid rgba(26,122,72,0.22); border-radius: 20px; padding: 4px 10px; font-size: 10.5px; color: #1a7a48; font-weight: 600; }
-        .ticket-mid { margin-bottom: 20px; }
+        .ticket-mid { margin-top: 18px; }
         .ticket-item-label { font-size: 10px; color: #8a968d; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; margin-bottom: 6px; }
         .ticket-item-name {
           font-family: 'Fraunces', Georgia, serif; font-size: 18px; color: #0a1f14; font-weight: 500;
@@ -415,13 +414,14 @@ export default function Hero() {
         .ticket-foot-label { font-size: 10px; color: #8a968d; font-weight: 500; }
         .ticket-stub-no { font-family: 'Fraunces', Georgia, serif; font-style: italic; font-size: 11.5px; color: #b5bcb6; }
         .ticket-discount {
-          position: absolute; top: -13px; right: 20px;
+          position: absolute; top: -10px; right: 20px;
           background: #0a1f14; color: #ffffff;
           font-family: 'Inter', sans-serif; font-size: 11.5px; font-weight: 600;
           padding: 6px 13px; border-radius: 10px;
           box-shadow: 0 8px 18px rgba(10,31,20,0.22);
           transform: rotate(3deg);
           white-space: nowrap;
+          z-index: 5;
         }
         .ticket-discount span { color: #6fcf9d; }
 
@@ -466,8 +466,8 @@ export default function Hero() {
         }
 
         @media (max-width: 460px) {
-          .search-row { flex-direction: column; border-radius: 16px; gap: 6px; }
-          .search-btn { height: 44px; width: 100%; border-radius: 11px; }
+          .search-row { max-width: 100%; border-radius: 999px; gap: 5px; }
+          .search-btn { height: 36px; padding: 0 16px; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -499,7 +499,6 @@ export default function Hero() {
               animate={visible ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.55, delay: 0.05 }}
             >
-             
               <span className="lot-sep" />
               <span className="lot-text"><span className="live-dot" />Auction floor open now</span>
             </motion.div>
@@ -531,7 +530,7 @@ export default function Hero() {
             >
               <div className="search-row">
                 <div className="search-box">
-                  <svg width="16" height="16" fill="none" stroke="#7aab92" strokeWidth="1.8" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
+                  <svg width="14" height="14" fill="none" stroke="#7aab92" strokeWidth="1.8" viewBox="0 0 24 24" style={{ flexShrink: 0 }}>
                     <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
                   </svg>
                   <input
@@ -544,16 +543,6 @@ export default function Hero() {
                   />
                 </div>
                 <button className="search-btn" onClick={handleSearch}>Search</button>
-              </div>
-
-              <div className="trending">
-                <span className="trending-label">Trending:</span>
-                {["Rolex", "iPhone 15", "Honda Civic", "Sectional sofa"].map((tag) => (
-                  <span key={tag} className="trend-tag" onClick={() => {
-                    setQuery(tag);
-                    router.push(`/auction?search=${encodeURIComponent(tag)}`);
-                  }}>{tag}</span>
-                ))}
               </div>
 
               {/* mobile-only signature element, sits under the search/trending block */}
