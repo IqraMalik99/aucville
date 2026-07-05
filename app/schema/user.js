@@ -27,7 +27,8 @@ const userSchema = new mongoose.Schema(
      country: String      
     },
     stripeAccountId: {
-      type: String
+      type: String,
+      default: null
     },
     stripeOnboardingDone: { type: Boolean, default: false },
 },

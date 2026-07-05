@@ -4,6 +4,8 @@ import Order from "../../../schema/order";
 import Auction from "../../../schema/auction";
 import User from "../../../schema/user";
 import { getFedexToken } from "../../../lib/fedex.auth";
+import { getNextBusinessDay, toFedExDateOnly } from "../../../lib/shipDate"
+
 
 export async function POST(req) {
     try {
@@ -44,6 +46,7 @@ export async function POST(req) {
 
         // GET FEDEX TOKEN
         const token = await getFedexToken();
+        const shipDate = getNextBusinessDay();
 
         // BUILD PAYLOAD
         const payload = {
@@ -57,11 +60,11 @@ export async function POST(req) {
                 shipper: {
                     contact: {
                         personName: sender.username,
-                        phoneNumber: sender.contact || "9018712345",
+                        phoneNumber: sender.contact,
                         companyName: "Auction Seller",
                     },
                     address: {
-                        streetLines: [order.senderAddress.addressline1, order.senderAddress.addressline2],
+                        streetLines: [order.senderAddress.addressline1],
                         city: order.senderAddress.city,
                         stateOrProvinceCode: order.senderAddress.state,
                         postalCode: order.senderAddress.zip,
@@ -74,11 +77,11 @@ export async function POST(req) {
                     {
                         contact: {
                             personName: receiver.username,
-                            phoneNumber: receiver.contact || "9018712346",
+                            phoneNumber: receiver.contact,
                             companyName: "Auction Buyer",
                         },
                         address: {
-                            streetLines: [order.receiverAddress.addressline1, order.receiverAddress.addressline2],
+                            streetLines: [order.receiverAddress.addressline1],
                             city: order.receiverAddress.city,
                             stateOrProvinceCode: order.receiverAddress.state,
                             postalCode: order.receiverAddress.zip,
@@ -91,7 +94,7 @@ export async function POST(req) {
                 serviceType: "GROUND_HOME_DELIVERY",        // ✅ delivers to buyer's home door
                 pickupType: "CONTACT_FEDEX_TO_SCHEDULE",    // ✅ FedEx picks up from seller's door
                 packagingType: "YOUR_PACKAGING",
-                shipDatestamp: new Date().toISOString().split("T")[0],
+               shipDatestamp: toFedExDateOnly(shipDate),
                 totalWeight: pkg.weight,
                 totalPackageCount: 1,
 
@@ -155,16 +158,45 @@ export async function POST(req) {
             );
         }
 
-        const shipment = data.output.transactionShipments[0];
-        const trackingNumber = shipment.masterTrackingNumber;
-        const labelDoc = shipment.pieceResponses[0].packageDocuments[0];
 
-        if (!labelDoc || !labelDoc.encodedLabel) {
+        const transactionShipment = data?.output?.transactionShipments?.[0];
+
+        if (!transactionShipment) {
             return NextResponse.json(
-                { success: false, error: "FedEx did not return a label", details: shipment.pieceResponses[0] },
+                {
+                    success: false,
+                    error: "FedEx returned an unexpected response shape",
+                    alerts: data?.output?.alerts ?? null,
+                    details: data,
+                },
                 { status: 502 }
             );
         }
+
+        const shipment = transactionShipment;
+        const trackingNumber = shipment?.masterTrackingNumber ?? null;
+        const pieceResponse = shipment?.pieceResponses?.[0];
+        const labelDoc = pieceResponse?.packageDocuments?.[0];
+
+        if (!trackingNumber) {
+            return NextResponse.json(
+                { success: false, error: "FedEx did not return a tracking number", details: shipment },
+                { status: 502 }
+            );
+        }
+
+        if (!labelDoc?.encodedLabel) {
+            return NextResponse.json(
+                {
+                    success: false,
+                    error: "FedEx did not return a label",
+                    alerts: shipment?.alerts ?? null,
+                    details: pieceResponse ?? shipment,
+                },
+                { status: 502 }
+            );
+        }
+
 
         // FedEx returns the label as base64 PDF bytes, not a hosted URL
         const labelBase64 = labelDoc.encodedLabel;
@@ -174,6 +206,7 @@ export async function POST(req) {
             status: "labelled",
             trackingNumber,
             labelBase64,
+            scheduledShipDate: shipDate,
         },
             { returnDocument: "after" }
         );

@@ -1,3 +1,5 @@
+import { POST } from "./app/api/fedex/ship/route"
+
 /api/fedex/rate        POST
 payload: {
     "orderId":****
@@ -39,3 +41,12 @@ responce
   "serviceType": "GROUND_HOME_DELIVERY",
   "shipDate": "2026-06-20"
 }
+
+
+
+
+/api/seller/account POST
+used to create connect account for seller and return the url to onboard the seller to stripe connect.
+/refresh page.jsx / complete are aage give to stripe to redirect after process
+/api/seller/account/complete  POST
+used to complete the onboarding process set to  stripeOnboardingDone: true 

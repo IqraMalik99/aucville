@@ -256,9 +256,8 @@ export default function AddressPage() {
         <div className="addr-bg"><div className="addr-bg-blob" /></div>
 
         <div className="addr-wrap">
-          <div className="addr-eyebrow">Account</div>
           <h1 className="addr-title">Shipping address</h1>
-          <p className="addr-sub">Used for shipping on auctions you win. You can update this any time.</p>
+          <p className="addr-sub">Used for shipping on auctions . You can update this any time.</p>
 
           <div className="addr-card">
             <div className="card-section-label">

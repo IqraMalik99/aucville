@@ -4,10 +4,12 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Navbar from "../component/Navbar";
 import Footer from "../component/Footer";
+import { createPortal } from "react-dom";
+
 import {
   User, Mail, MapPin, Plus, Gavel, Trophy,
   Clock, CheckCircle, BarChart2, Loader2, AlertCircle,
-  ChevronRight, Package, Edit2, Upload, Link, X, ImageIcon
+  ChevronRight, Package, Edit2, Upload, Link, X, ImageIcon,ShoppingCart
 } from "lucide-react";
 
 const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -43,28 +45,28 @@ function PlaceOrderButton({ auction }) {
     }
   };
 
- const confirmPlaceOrder = async () => {
-  setLoading(true);
-  try {
-    const res = await fetch("/api/orders/place", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ auctionId: auction._id }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.error || "Failed to place order.");
-      return;
+  const confirmPlaceOrder = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/orders/place", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ auctionId: auction._id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || "Failed to place order.");
+        return;
+      }
+      setOrdered(true);
+      setShowConfirm(false);
+      router.push(`/checkout?orderId=${data.order._id}`);
+    } catch {
+      alert("Failed to place order.");
+    } finally {
+      setLoading(false);
     }
-    setOrdered(true);
-    setShowConfirm(false);
-    router.push(`/checkout?orderId=${data.order._id}`);
-  } catch {
-    alert("Failed to place order.");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const goChangeAddress = () => {
     setShowConfirm(false);
@@ -159,6 +161,105 @@ function PlaceOrderButton({ auction }) {
   );
 }
 
+function PayoutBanner({ router }) {
+  return (
+    <div
+      className="anim go"
+      style={{
+        display: "flex", alignItems: "center", gap: 14,
+        background: "rgba(245,158,11,0.08)",
+        border: "1px solid rgba(245,158,11,0.3)",
+        borderRadius: 16, padding: "16px 20px",
+        marginBottom: 14, fontFamily: "'DM Sans', sans-serif",
+      }}
+    >
+      <div style={{
+        width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+        background: "rgba(245,158,11,0.15)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <AlertCircle size={18} stroke="#B45309" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 500, color: "#111827", marginBottom: 2 }}>
+          Set up payouts to get paid
+        </div>
+        <div style={{ fontSize: 12, color: "#6B7280", fontWeight: 300 }}>
+          If someone buys your item, you won't receive payment until this is done.
+        </div>
+      </div>
+      <button
+        className="addr-btn"
+        onClick={() => router.push("/seller/onboard")}
+        style={{ flexShrink: 0, background: "#B45309" }}
+      >
+        Add payout
+      </button>
+    </div>
+  );
+}
+
+function MoreInfoNeededBanner({ router }) {
+  const [loading, setLoading] = useState(false);
+
+ const goUpdate = async () => {
+  setLoading(true);
+  try {
+    const res = await fetch("/api/payment/seller/account", { method: "POST" });
+    const data = await res.json();
+    if (data.url) {
+      window.location.href = data.url;
+    } else if (data.alreadyCompleted) {
+      // shouldn't normally hit this if needsMoreInfo was true, but handle gracefully
+      window.location.reload();
+    } else {
+      alert(data.error || "Could not open update form.");
+      setLoading(false);
+    }
+  } catch {
+    alert("Something went wrong.");
+    setLoading(false);
+  }
+};
+
+  return (
+    <div
+      className="anim go"
+      style={{
+        display: "flex", alignItems: "center", gap: 14,
+        background: "rgba(59,130,246,0.08)",
+        border: "1px solid rgba(59,130,246,0.3)",
+        borderRadius: 16, padding: "16px 20px",
+        marginBottom: 14, fontFamily: "'DM Sans', sans-serif",
+      }}
+    >
+      <div style={{
+        width: 38, height: 38, borderRadius: 10, flexShrink: 0,
+        background: "rgba(59,130,246,0.15)",
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+        <AlertCircle size={18} stroke="#1D4ED8" />
+      </div>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13.5, fontWeight: 500, color: "#111827", marginBottom: 2 }}>
+          A few more details needed
+        </div>
+        <div style={{ fontSize: 12, color: "#6B7280", fontWeight: 300 }}>
+          Stripe needs a bit more info to keep your payouts running smoothly.
+        </div>
+      </div>
+      <button
+        className="addr-btn"
+        onClick={goUpdate}
+        disabled={loading}
+        style={{ flexShrink: 0, background: "#1D4ED8" }}
+      >
+        {loading ? "Loading…" : "Update details"}
+      </button>
+    </div>
+  );
+}
+
 function EditAuctionModal({ auction, onClose, onSaved }) {
   const fileRef = useRef(null);
   const toLocalInput = (iso) => {
@@ -184,6 +285,7 @@ function EditAuctionModal({ auction, onClose, onSaved }) {
   const [uploadErr, setUploadErr] = useState("");
   const [dragOver, setDragOver] = useState(false);
 
+  const busy = saving || uploading;
   const update = (key, val) => setForm(f => ({ ...f, [key]: val }));
 
   async function uploadToCloudinary(file) {
@@ -252,89 +354,112 @@ function EditAuctionModal({ auction, onClose, onSaved }) {
     }
   };
 
-  return (
-    <div
-      style={{
-        position: "fixed", inset: 0,
-        display: "flex", alignItems: "center", justifyContent: "center", zIndex: 9999,
-        padding: 16
-      }}
-      onClick={(e) => { e.stopPropagation(); onClose(); }}
-    >
+  const inputStyle = {
+    width: "100%", fontFamily: "inherit", fontSize: 14, fontWeight: 400,
+    padding: "10px 12px", border: "1px solid #E5E7EB", borderRadius: 10,
+    color: "#111827", outline: "none", background: "#fff",
+  };
+  const labelStyle = {
+    fontSize: 12, fontWeight: 500, color: "#374151",
+    display: "block", marginBottom: 6,
+  };
+  const sectionLabelStyle = {
+    fontSize: 10.5, fontWeight: 500, color: "#9CA3AF",
+    textTransform: "uppercase", letterSpacing: "0.6px",
+    marginBottom: 10,
+  };
+
+ const modalContent = (
+    <>
+      <style>{`
+        .edit-modal-scroll::-webkit-scrollbar { display: none; }
+      `}</style>
       <div
         style={{
-          background: "#ffffff", borderRadius: 16, padding: 28, maxWidth: 420, width: "100%",
-          fontFamily: "'DM Sans', sans-serif", boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-          border: "1px solid #E5E7EB"
+          position: "fixed", inset: 0, background: "rgba(15,23,42,0.55)",
+          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2147483647,
+          padding: 16
         }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); if (!busy) onClose(); }}
       >
-        <div style={{
-          width: 44, height: 44, borderRadius: 12, background: "#E7F5EF",
-          display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 16
-        }}>
-          <Gavel size={20} stroke="#1B3A2D" />
-        </div>
+        <div
+          className="edit-modal-scroll"
+          style={{
+            background: "#ffffff", borderRadius: 18, padding: 28, maxWidth: 440, width: "100%",
+            maxHeight: "88vh", overflowY: "auto",
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            fontFamily: "'DM Sans', sans-serif", boxShadow: "0 24px 70px rgba(0,0,0,0.28)",
+            border: "1px solid #E5E7EB"
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+            <div style={{
+              width: 42, height: 42, borderRadius: 12, background: "#E7F5EF",
+              display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+            }}>
+             <ShoppingCart size={19} stroke="#1B3A2D" />.
+            </div>
+            <div>
+              <h3 style={{ fontSize: 17, fontWeight: 500, color: "#111827", lineHeight: 1.2, margin: 0 }}>
+                Edit auction
+              </h3>
+              <p style={{ fontSize: 12.5, color: "#9CA3AF", margin: "2px 0 0" }}>
+                Changes apply immediately.
+              </p>
+            </div>
+          </div>
 
-        <h3 style={{ fontSize: 17, fontWeight: 500, marginBottom: 6, color: "#111827" }}>
-          Edit auction
-        </h3>
-        <p style={{ fontSize: 13, color: "#6B7280", fontWeight: 400, marginBottom: 18 }}>
-          You can update these details until the auction ends.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
-          <div>
-            <label style={{ fontSize: 11.5, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
-              Image
-            </label>
-
-            <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+          <div style={sectionLabelStyle}>Photo</div>
+          <div style={{ marginBottom: 20 }}>
+            <div style={{
+              display: "inline-flex", border: "1px solid #E5E7EB", borderRadius: 10,
+              padding: 3, marginBottom: 10, gap: 2,
+            }}>
               <button
                 type="button"
                 onClick={() => setImgMode("upload")}
                 style={{
-                  display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20,
-                  fontSize: 12, fontFamily: "inherit", fontWeight: 400, cursor: "pointer",
-                  border: "1px solid #D1D5DB",
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 8,
+                  fontSize: 12.5, fontFamily: "inherit", fontWeight: 500, cursor: "pointer", border: "none",
                   background: imgMode === "upload" ? "#1B3A2D" : "transparent",
-                  color: imgMode === "upload" ? "#D8F0E6" : "#374151",
-                  borderColor: imgMode === "upload" ? "#1B3A2D" : "#D1D5DB",
+                  color: imgMode === "upload" ? "#fff" : "#6B7280",
                 }}
               >
-                <Upload size={12} /> Upload file
+                <Upload size={12} /> Upload
               </button>
               <button
                 type="button"
                 onClick={() => setImgMode("url")}
                 style={{
-                  display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 20,
-                  fontSize: 12, fontFamily: "inherit", fontWeight: 400, cursor: "pointer",
-                  border: "1px solid #D1D5DB",
+                  display: "flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 8,
+                  fontSize: 12.5, fontFamily: "inherit", fontWeight: 500, cursor: "pointer", border: "none",
                   background: imgMode === "url" ? "#1B3A2D" : "transparent",
-                  color: imgMode === "url" ? "#D8F0E6" : "#374151",
-                  borderColor: imgMode === "url" ? "#1B3A2D" : "#D1D5DB",
+                  color: imgMode === "url" ? "#fff" : "#6B7280",
                 }}
               >
-                <Link size={12} /> Paste URL
+                <Link size={12} /> URL
               </button>
             </div>
 
             {preview ? (
-              <div style={{ position: "relative", borderRadius: 12, overflow: "hidden", background: "#F9FAFB" }}>
+              <div style={{ position: "relative", borderRadius: 12, overflow: "hidden", background: "#F3F4F6" }}>
                 <img
                   src={preview}
                   alt="preview"
-                  style={{ width: "100%", maxHeight: 160, objectFit: "cover", display: "block" }}
+                  style={{ width: "100%", aspectRatio: "16/9", objectFit: "cover", display: "block" }}
                   onError={() => { setPreview(""); setUploadErr("Could not load image."); }}
                 />
                 <button
                   type="button"
                   onClick={clearImage}
+                  disabled={busy}
                   style={{
                     position: "absolute", top: 8, right: 8, background: "#fff", border: "none",
                     borderRadius: "50%", width: 28, height: 28, display: "flex", alignItems: "center",
-                    justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                    justifyContent: "center", cursor: busy ? "not-allowed" : "pointer",
+                    boxShadow: "0 2px 6px rgba(0,0,0,0.18)", opacity: busy ? 0.5 : 1,
                   }}
                 >
                   <X size={13} />
@@ -342,23 +467,26 @@ function EditAuctionModal({ auction, onClose, onSaved }) {
               </div>
             ) : imgMode === "upload" ? (
               <div
-                onClick={() => fileRef.current?.click()}
-                onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                onClick={() => !busy && fileRef.current?.click()}
+                onDragOver={e => { e.preventDefault(); if (!busy) setDragOver(true); }}
                 onDragLeave={() => setDragOver(false)}
-                onDrop={handleDrop}
+                onDrop={e => { if (!busy) handleDrop(e); }}
                 style={{
                   border: `1.5px dashed ${dragOver ? "#52B788" : "#D1D5DB"}`, borderRadius: 12,
-                  padding: "20px 16px", textAlign: "center", cursor: "pointer",
-                  background: dragOver ? "rgba(82,183,136,0.04)" : "rgba(255,255,255,0.6)",
+                  padding: "24px 16px", textAlign: "center", cursor: busy ? "not-allowed" : "pointer",
+                  background: dragOver ? "rgba(82,183,136,0.05)" : "#FAFAFA",
+                  opacity: busy ? 0.6 : 1,
                 }}
               >
-                <ImageIcon size={22} stroke="#9CA3AF" style={{ marginBottom: 6 }} />
-                <div style={{ fontSize: 12.5, color: "#374151", fontWeight: 300 }}>
-                  <strong style={{ color: "#52B788", fontWeight: 400 }}>Click to upload</strong> or drag &amp; drop
+                <ImageIcon size={24} stroke="#9CA3AF" style={{ marginBottom: 8 }} />
+                <div style={{ fontSize: 12.5, color: "#374151" }}>
+                  <strong style={{ color: "#1B3A2D", fontWeight: 600 }}>Click to upload</strong> or drag and drop
                 </div>
+                <div style={{ fontSize: 11, color: "#9CA3AF", marginTop: 4 }}>PNG, JPG up to 10MB</div>
                 <input
                   ref={fileRef} type="file" accept="image/*" style={{ display: "none" }}
                   onChange={e => handleFile(e.target.files[0])}
+                  disabled={busy}
                 />
               </div>
             ) : (
@@ -368,18 +496,17 @@ function EditAuctionModal({ auction, onClose, onSaved }) {
                   onChange={e => setUrlInput(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && applyUrl()}
                   placeholder="https://example.com/image.jpg"
-                  style={{
-                    flex: 1, fontFamily: "inherit", fontSize: 13.5, fontWeight: 300,
-                    padding: "10px 12px", border: "1px solid #E5E7EB", borderRadius: 10,
-                    color: "#111827", outline: "none"
-                  }}
+                  disabled={busy}
+                  style={{ ...inputStyle, flex: 1 }}
                 />
                 <button
                   type="button"
                   onClick={applyUrl}
+                  disabled={busy}
                   style={{
                     background: "#1B3A2D", color: "#fff", border: "none", borderRadius: 10,
-                    padding: "0 16px", fontSize: 13, fontWeight: 400, cursor: "pointer", fontFamily: "inherit",
+                    padding: "0 18px", fontSize: 13, fontWeight: 500, cursor: busy ? "not-allowed" : "pointer",
+                    fontFamily: "inherit", opacity: busy ? 0.6 : 1,
                   }}
                 >
                   Apply
@@ -388,117 +515,109 @@ function EditAuctionModal({ auction, onClose, onSaved }) {
             )}
 
             {uploading && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "#52B788", marginTop: 6 }}>
-                <Loader2 size={12} style={{ animation: "spin 1s linear infinite" }} /> Uploading…
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#1B3A2D", marginTop: 8 }}>
+                <Loader2 size={13} style={{ animation: "spin 1s linear infinite" }} /> Uploading…
               </div>
             )}
             {uploadErr && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "#EF4444", marginTop: 6 }}>
-                <AlertCircle size={12} />{uploadErr}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#EF4444", marginTop: 8 }}>
+                <AlertCircle size={13} />{uploadErr}
               </div>
             )}
           </div>
 
-          <div>
-            <label style={{ fontSize: 11.5, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
-              Title
-            </label>
-            <input
-              type="text"
-              value={form.title}
-              onChange={e => update("title", e.target.value)}
-              style={{
-                width: "100%", fontFamily: "inherit", fontSize: 13.5, fontWeight: 300,
-                padding: "10px 12px", border: "1px solid #E5E7EB", borderRadius: 10,
-                color: "#111827", outline: "none"
-              }}
-            />
+          <div style={sectionLabelStyle}>Listing details</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 20 }}>
+            <div>
+              <label style={labelStyle}>Title</label>
+              <input
+                type="text"
+                value={form.title}
+                onChange={e => update("title", e.target.value)}
+                disabled={busy}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Category</label>
+              <select
+                value={form.category}
+                onChange={e => update("category", e.target.value)}
+                disabled={busy}
+                style={inputStyle}
+              >
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label style={{ fontSize: 11.5, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
-              Category
-            </label>
-            <select
-              value={form.category}
-              onChange={e => update("category", e.target.value)}
+          <div style={sectionLabelStyle}>Pricing and timing</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14, marginBottom: 22 }}>
+            <div>
+              <label style={labelStyle}>Starting price ($)</label>
+              <input
+                type="number"
+                min="1"
+                value={form.startingPrice}
+                onChange={e => update("startingPrice", e.target.value)}
+                disabled={busy}
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>End time</label>
+              <input
+                type="datetime-local"
+                value={form.endTime}
+                onChange={e => update("endTime", e.target.value)}
+                disabled={busy}
+                style={inputStyle}
+              />
+            </div>
+          </div>
+
+          {err && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#B91C1C",
+              background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px",
+              marginBottom: 16
+            }}>
+              <AlertCircle size={13} /> {err}
+            </div>
+          )}
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <button
+              onClick={handleSave}
+              disabled={busy}
               style={{
-                width: "100%", fontFamily: "inherit", fontSize: 13.5, fontWeight: 300,
-                padding: "10px 12px", border: "1px solid #E5E7EB", borderRadius: 10,
-                color: "#111827", outline: "none", background: "#fff"
+                width: "100%", justifyContent: "center", padding: "12px 16px", fontSize: 14,
+                fontWeight: 600, color: "#fff", background: busy ? "#6B8A78" : "#1B3A2D",
+                border: "none", borderRadius: 12, cursor: busy ? "not-allowed" : "pointer",
+                fontFamily: "inherit", display: "flex", alignItems: "center", gap: 8,
               }}
             >
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={{ fontSize: 11.5, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
-              Starting price ($)
-            </label>
-            <input
-              type="number"
-              min="1"
-              value={form.startingPrice}
-              onChange={e => update("startingPrice", e.target.value)}
+              {saving && <Loader2 size={15} style={{ animation: "spin 1s linear infinite" }} />}
+              {saving ? "Saving…" : "Save changes"}
+            </button>
+            <button
+              onClick={onClose}
+              disabled={busy}
               style={{
-                width: "100%", fontFamily: "inherit", fontSize: 13.5, fontWeight: 300,
-                padding: "10px 12px", border: "1px solid #E5E7EB", borderRadius: 10,
-                color: "#111827", outline: "none"
+                width: "100%", padding: "10px 16px", fontSize: 13, color: "#9CA3AF",
+                background: "transparent", border: "none", cursor: busy ? "not-allowed" : "pointer",
+                fontFamily: "inherit", opacity: busy ? 0.5 : 1,
               }}
-            />
+            >
+              Cancel
+            </button>
           </div>
-
-          <div>
-            <label style={{ fontSize: 11.5, fontWeight: 500, color: "#374151", display: "block", marginBottom: 6 }}>
-              End time
-            </label>
-            <input
-              type="datetime-local"
-              value={form.endTime}
-              onChange={e => update("endTime", e.target.value)}
-              style={{
-                width: "100%", fontFamily: "inherit", fontSize: 13.5, fontWeight: 300,
-                padding: "10px 12px", border: "1px solid #E5E7EB", borderRadius: 10,
-                color: "#111827", outline: "none"
-              }}
-            />
-          </div>
-        </div>
-
-        {err && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "#B91C1C",
-            background: "#FEF2F2", border: "1px solid #FECACA", borderRadius: 10, padding: "10px 12px",
-            marginBottom: 14
-          }}>
-            <AlertCircle size={13} /> {err}
-          </div>
-        )}
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <button
-            className="addr-btn"
-            onClick={handleSave}
-            disabled={saving}
-            style={{ width: "100%", justifyContent: "center", padding: "11px 16px", fontSize: 13.5, color: "#fff", background: "#1B3A2D" }}
-          >
-            {saving ? "Saving..." : "Save changes"}
-          </button>
-          <button
-            onClick={onClose}
-            disabled={saving}
-            style={{
-              width: "100%", padding: "10px 16px", fontSize: 13, color: "#9CA3AF",
-              background: "transparent", border: "none", cursor: "pointer", fontFamily: "inherit"
-            }}
-          >
-            Cancel
-          </button>
         </div>
       </div>
-    </div>
+    </>
   );
+
+  return createPortal(modalContent, document.body);
 }
 
 function StatCard({ icon, label, value, accent }) {
@@ -596,13 +715,21 @@ export default function ProfilePage() {
   const [tab, setTab] = useState("owned");   // "owned" | "won"
   const [visible, setVisible] = useState(false);
 
+  const [payoutStatus, setPayoutStatus] = useState({ needsPayout: false, needsMoreInfo: false });
+
   useEffect(() => {
     if (status === "loading") return;
     if (!session) { router.push("/login"); return; }
+
     fetch("/api/user/profile")
       .then(r => r.json())
       .then(d => { setData(d); setLoading(false); setTimeout(() => setVisible(true), 60); })
       .catch(() => { setErr("Failed to load profile."); setLoading(false); });
+
+    fetch("/api/user/isSeller")
+      .then(r => r.json())
+      .then(d => setPayoutStatus({ needsPayout: !!d?.needsPayout, needsMoreInfo: !!d?.needsMoreInfo }))
+      .catch(() => { }); // non-critical — silently skip the banners if this fails
   }, [session, status]);
 
   const hasAddress = data?.user?.address &&
@@ -616,20 +743,22 @@ export default function ProfilePage() {
         ownedAuctions: prev.ownedAuctions.map(a =>
           String(a._id) === String(updated._id)
             ? {
-                ...a,
-                title: updated.title,
-                category: updated.category,
-                startingPrice: updated.startingPrice,
-                currentPrice: updated.finalPrice ?? updated.startingPrice,
-                endTime: updated.endTime,
-                imageUrl: updated.imageUrl ?? a.imageUrl,
-                isLive: new Date(updated.endTime) > new Date(),
-              }
+              ...a,
+              title: updated.title,
+              category: updated.category,
+              startingPrice: updated.startingPrice,
+              currentPrice: updated.finalPrice ?? updated.startingPrice,
+              endTime: updated.endTime,
+              imageUrl: updated.imageUrl ?? a.imageUrl,
+              isLive: new Date(updated.endTime) > new Date(),
+            }
             : a
         ),
       };
     });
   };
+
+
 
   if (status === "loading" || loading) return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#fff" }}>
@@ -637,6 +766,9 @@ export default function ProfilePage() {
       <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
+
+
+
 
   return (
     <>
@@ -782,6 +914,13 @@ export default function ProfilePage() {
                   <div className="id-email"><Mail size={12} />{data.user.email}</div>
                 </div>
               </div>
+
+              {payoutStatus.needsPayout && (
+                <PayoutBanner router={router} />
+              )}
+              {payoutStatus.needsMoreInfo && (
+                <MoreInfoNeededBanner router={router} />
+              )}
 
               {/* ── Stats ─────────────────────────────────────────────────── */}
               <div className={`stats-row anim ${visible ? "go d2" : ""}`} style={{ marginBottom: 14 }}>

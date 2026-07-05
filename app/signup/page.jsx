@@ -52,6 +52,7 @@ export default function SignupPage() {
     password: "",
   });
 
+  const [agreed, setAgreed] = useState(false);
   const [loading, setLoading] = useState(false);
 
   function handleChange(e) {
@@ -60,6 +61,12 @@ export default function SignupPage() {
 
   async function handleSignup(e) {
     e.preventDefault();
+
+    if (!agreed) {
+      alert("Please agree to the Terms of Service and Privacy Policy to continue.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -193,6 +200,41 @@ export default function SignupPage() {
   cursor: not-allowed;
 }
 
+/* POLICY CHECKBOX */
+.policy-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 4px 0 14px;
+}
+
+.policy-checkbox {
+  margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  accent-color: #1a7a48;
+  cursor: pointer;
+}
+
+.policy-label {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: rgba(0,0,0,0.7);
+  cursor: pointer;
+  user-select: none;
+}
+
+.policy-label a {
+  color: #1a7a48;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.policy-label a:hover {
+  text-decoration: underline;
+}
+
 /* DIVIDER UPGRADE */
 .divider {
   display: flex;
@@ -254,7 +296,7 @@ export default function SignupPage() {
 
       <div className="bg-glow" />
       
-
+<div className="h-5"></div>
       <form className="card" onSubmit={handleSignup}>
         <div className="title">Create Account</div>
         <div className="subtitle">Join live auctions and start bidding</div>
@@ -282,7 +324,27 @@ export default function SignupPage() {
           onChange={handleChange}
         />
 
-        <button className="btn" disabled={loading}>
+        <div className="policy-row">
+          <input
+            type="checkbox"
+            id="agree-policy"
+            className="policy-checkbox"
+            checked={agreed}
+            onChange={(e) => setAgreed(e.target.checked)}
+          />
+          <label htmlFor="agree-policy" className="policy-label">
+            I agree to the{" "}
+            {/* <a href="/terms" target="_blank" rel="noopener noreferrer">
+              Terms of Service
+            </a>{" "}
+            and{" "} */}
+            <span  onClick={() => router.push("/policy")} style={{ color: "#1a7a48", fontWeight: "600", cursor: "pointer" }}>
+              Privacy Policy
+            </span>
+          </label>
+        </div>
+
+        <button className="btn" disabled={loading || !agreed}>
           {loading ? "Creating account..." : "Continue with Email"}
         </button>
 
@@ -295,6 +357,7 @@ export default function SignupPage() {
           <span onClick={() => router.push("/login")}>Login</span>
         </div>
       </form>
+    <br></br>
     </div>
       <Footer/>
       </>

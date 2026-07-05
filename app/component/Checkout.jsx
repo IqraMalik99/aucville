@@ -78,16 +78,35 @@ const CheckoutPage = ({ amount, orderId }) => {
       }
 
       if (paymentIntent.status === "succeeded") {
-        setStatus("succeeded");
-        await fetch("/api/payment/success", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            paymentIntentId: paymentIntent.id,
-            orderId,
-          }),
-        });
-      } else if (paymentIntent.status === "processing") {
+        try {
+          const res = await fetch("/api/payment/success", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              paymentIntentId: paymentIntent.id,
+              orderId,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+
+          if (!res.ok) {
+            // Payment succeeded on Stripe's side, but fulfillment failed —
+            // don't tell the user it's fully done.
+            setErrorMessage(
+              "Your payment went through, but we couldn't finish setting up your order. Please contact support with this reference: " + paymentIntent.id
+            );
+            return;
+          }
+
+          setStatus("succeeded"); // only now, after fulfillment is confirmed
+        } catch (err) {
+          setErrorMessage(
+            "Your payment went through, but we couldn't confirm your order. Please contact support with this reference: " + paymentIntent.id
+          );
+          return;
+        }
+      }
+      else if (paymentIntent.status === "processing") {
         setStatus("processing");
       } else {
         setErrorMessage(`Payment status: ${paymentIntent.status}. Please try again.`);

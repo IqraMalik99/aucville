@@ -1,11 +1,13 @@
 "use client";
 import { useSession } from "next-auth/react";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Navbar from "../../component/Navbar"
 
 export default function OnboardPage() {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
+  const router = useRouter();
 
   async function handleSetup() {
     try {
@@ -14,12 +16,18 @@ export default function OnboardPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          sellerId: session?.user.id || "",
-          email: session?.user.email || "",
+          sellerId: session?.user?.id || "",
+          email: session?.user?.email || "",
         }),
       });
-      const { url } = await res.json();
-      window.location.href = url;
+      const data = await res.json();
+      if (data.alreadyCompleted) {
+        router.push("/my-auction");
+        return;
+      }
+      if (data.url) {
+        window.location.href = data.url;
+      } 
     } catch (error) {
       setLoading(false);
       alert("Something went wrong. Please try again.");
@@ -27,14 +35,14 @@ export default function OnboardPage() {
   }
 
   return (
-<div
-  style={{
-    background: "#ffffff",
-    width: "100%",
-    minHeight: "100vh",
-    overflowX: "hidden",
-  }}
->
+    <div
+      style={{
+        background: "#ffffff",
+        width: "100%",
+        minHeight: "100vh",
+        overflowX: "hidden",
+      }}
+    >
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;1,9..144,400&family=Inter:wght@400;500;600&display=swap');
@@ -265,12 +273,12 @@ export default function OnboardPage() {
           .ob-body { padding: 22px 24px 26px; }
         }
       `}</style>
-<Navbar/>
+      <Navbar />
 
       <div className="ob-wrap">
         <div className="ob-card">
           <div className="ob-header">
-           
+
             <h1>
               Start receiving <em>payouts.</em>
             </h1>
@@ -330,7 +338,7 @@ export default function OnboardPage() {
               ) : (
                 <>
                   <svg className="ob-stripe-icon" viewBox="0 0 28 28" fill="white">
-                    <path d="M13.3 11.1c0-.9.8-1.3 2-1.3 1.8 0 4.1.5 5.9 1.5V6.6c-2-.8-3.9-1.1-5.9-1.1C11.1 5.5 8 7.5 8 11.4c0 6.1 8.4 5.1 8.4 7.7 0 1.1-.9 1.4-2.2 1.4-1.9 0-4.4-.8-6.3-1.9v4.8c2.1.9 4.3 1.3 6.3 1.3 4.8 0 8-2.4 8-6.3-.1-6.6-8.9-5.4-8.9-7.3z"/>
+                    <path d="M13.3 11.1c0-.9.8-1.3 2-1.3 1.8 0 4.1.5 5.9 1.5V6.6c-2-.8-3.9-1.1-5.9-1.1C11.1 5.5 8 7.5 8 11.4c0 6.1 8.4 5.1 8.4 7.7 0 1.1-.9 1.4-2.2 1.4-1.9 0-4.4-.8-6.3-1.9v4.8c2.1.9 4.3 1.3 6.3 1.3 4.8 0 8-2.4 8-6.3-.1-6.6-8.9-5.4-8.9-7.3z" />
                   </svg>
                   Set up payouts
                 </>

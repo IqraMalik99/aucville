@@ -25,17 +25,22 @@ export async function POST(req) {
     // Get order first
     const order = await Order.findById(orderId);
 
+
     if (!order) {
       return Response.json(
         { error: "Order not found" },
         { status: 404 }
       );
     }
+    const expectedAmount = Math.round(Number(order.totalAmount) * 100);
+    if (payment.amount !== expectedAmount) {
+      return Response.json({ error: "Amount mismatch" }, { status: 400 });
+    }
 
     // ── Idempotency guard ──
     // If this order was already marked paid/shipped (e.g. webhook + client both
     // fired, or the user double-submitted), don't re-ship or re-email.
-    if (order.status === "paid") {
+    if (["paid", "labelled", "shipped", "delivered"].includes(order.status)) {
       return Response.json({
         success: true,
         message: "Order already processed",
@@ -52,6 +57,11 @@ export async function POST(req) {
     const buyer = await User.findById(order.receiverId);
     const seller = await User.findById(order.senderId);
     const auction = await Auction.findById(order.auctionId);
+
+    if (!buyer || !seller) {
+      console.error("Missing buyer or seller for order", orderId);
+      return Response.json({ error: "Order is missing buyer or seller data" }, { status: 500 });
+    }
 
     const itemTitle = auction?.title || "Auction Item";
 
@@ -211,7 +221,7 @@ export async function POST(req) {
           <div style="background-color: ${shipment ? "#ecfdf5" : "#fff7e6"}; border-left: 4px solid ${shipment ? "#10b981" : "#f59e0b"}; padding: 12px 16px; border-radius: 4px; margin: 20px 0;">
             <p style="margin: 0; color: ${shipment ? "#065f46" : "#92400e"}; font-size: 14px;">
               ${shipment
-          ? "📎 Your FedEx shipping label is attached as a PDF. Print it, attach it to the package, and drop it off or schedule a pickup."
+          ? "📎 Your FedEx shipping label is attached as a PDF. Print it, attach it to the package."
           : "⚠️ Automatic label generation failed. Please create the shipping label manually or contact support, then update the order once dispatched."}
             </p>
           </div>
@@ -246,7 +256,7 @@ export async function POST(req) {
       ];
     }
 
- await sendEmail(sellerEmailPayload);
+    await sendEmail(sellerEmailPayload);
 
     // ── Schedule FedEx pickup (non-blocking) ──
     let pickupError = null;

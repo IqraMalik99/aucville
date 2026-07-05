@@ -31,11 +31,12 @@ const orderSchema = new mongoose.Schema({
   pickupScheduledAt: Date,
   pickupReadyAt: Date,
   labelBase64: { type: String, default: null },
+  scheduledShipDate: { type: Date, default: null },
   //seller stripe
   sellerPaidAt: { type: Date, default: null },
   sellerPayoutAmount: { type: Number, default: null },
   stripeTransferId: { type: String, default: null },
-// store Stripe PaymentIntent ID for later reference buyer pays
+  // store Stripe PaymentIntent ID for later reference buyer pays
   paymentIntentId: String,
   status: { type: String, enum: ["pending_payment", "paid", "labelled", "pickup_scheduled", "shipped", "delivered", "cancelled"], default: "pending_payment" },
 }, { timestamps: true });

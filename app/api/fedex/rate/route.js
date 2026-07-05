@@ -71,16 +71,15 @@ export async function POST(req) {
       requestedShipment: {
         shipper: {
           address: {
-            postalCode: order.receiverAddress.zip,
+            postalCode: order.senderAddress.zip,
             countryCode: order.senderAddress.country || "US",
           },
         },
-
         recipient: {
           address: {
-            postalCode: order.senderAddress.zip,
+            postalCode: order.receiverAddress.zip,
             countryCode: order.receiverAddress.country || "US",
-            residential: true
+            residential: true,
           },
         },
 

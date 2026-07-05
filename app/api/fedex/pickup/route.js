@@ -3,6 +3,7 @@ import { connectDB } from "../../../lib/db";
 import Order from "../../../schema/order";
 import User from "../../../schema/user";
 import { getFedexToken } from "../../../lib/fedex.auth";
+import { toFedExReadyTimestamp } from "../../../lib/shipDate";
 import { sendEmail } from "../../../lib/sendEmail"
 
 export async function POST(req) {
@@ -42,15 +43,8 @@ export async function POST(req) {
 
         const token = await getFedexToken();
 
-        // tomorrow at 10 AM
-        const now = new Date();
-        const readyTime = new Date(
-            now.getFullYear(),
-            now.getMonth(),
-            now.getDate() + 1,
-            10, 0, 0
-        );
-        const readyTimestamp = readyTime.toISOString(); // "2020-07-03T11:00:00Z" format
+        const readyTime = new Date(order.scheduledShipDate);
+        const readyTimestamp = toFedExReadyTimestamp(readyTime);
 
         // ── PAYLOAD — matched exactly to official FedEx Ground sample ──────────
         const payload = {
@@ -61,25 +55,25 @@ export async function POST(req) {
             originDetail: {
                 pickupLocation: {
                     contact: {
-                        personName:  sender.username,
-                        phoneNumber: sender.contact || "9018712345",
+                        personName: sender.username,
+                        phoneNumber: sender.contact
                     },
                     address: {
                         streetLines: [
                             order.senderAddress.addressline1
                         ].filter(Boolean),
-                        city:                order.senderAddress.city,
+                        city: order.senderAddress.city,
                         stateOrProvinceCode: order.senderAddress.state,
-                        postalCode:          order.senderAddress.zip,
-                        countryCode:         order.senderAddress.country || "US",
+                        postalCode: order.senderAddress.zip,
+                        countryCode: order.senderAddress.country || "US",
                     },
                 },
-                packageLocation:    "FRONT",
+                packageLocation: "FRONT",
                 readyDateTimestamp: readyTimestamp,
-                customerCloseTime:  "20:00:00",
+                customerCloseTime: "20:00:00",
             },
 
-            carrierCode: "FDXG",
+            carrierCode: "FDXG"
         };
 
         console.log("FedEx pickup payload:\n", JSON.stringify(payload, null, 2));
@@ -90,8 +84,8 @@ export async function POST(req) {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization:  `Bearer ${token}`,
-                    "X-locale":     "en_US",
+                    Authorization: `Bearer ${token}`,
+                    "X-locale": "en_US",
                 },
                 body: JSON.stringify(payload),
             }
@@ -107,15 +101,22 @@ export async function POST(req) {
             );
         }
 
-        const pickupConfirmationCode = data.output.pickupConfirmationCode;
-        const location               = data.output.location || null;
+        const pickupConfirmationCode = data?.output?.pickupConfirmationCode ?? null;
+        const location = data?.output?.location ?? null;
+
+        if (!pickupConfirmationCode) {
+            return NextResponse.json(
+                { success: false, error: "FedEx did not return a pickup confirmation", details: data?.output ?? data },
+                { status: 502 }
+            );
+        }
 
         await Order.findByIdAndUpdate(orderId, {
-            status:            "pickup_scheduled",
+            status: "pickup_scheduled",
             pickupConfirmationCode,
-            pickupLocation:    location,
+            pickupLocation: location,
             pickupScheduledAt: new Date(),
-            pickupReadyAt:     readyTime,
+            pickupReadyAt: readyTime,
         });
 
         // ── SEND EMAIL TO SENDER ─────────────────────────────────────────────
@@ -124,11 +125,11 @@ export async function POST(req) {
             if (sender.email) {
                 const formattedReadyTime = readyTime.toLocaleString("en-US", {
                     weekday: "long",
-                    year:    "numeric",
-                    month:   "long",
-                    day:     "numeric",
-                    hour:    "numeric",
-                    minute:  "2-digit",
+                    year: "numeric",
+                    month: "long",
+                    day: "numeric",
+                    hour: "numeric",
+                    minute: "2-digit",
                 });
 
                 const addressLine = [
@@ -162,7 +163,7 @@ export async function POST(req) {
             pickupConfirmationCode,
             location,
             readyTime: readyTimestamp,
-            message:  "FedEx pickup scheduled for next business day. Courier arrives by 8:00 PM.",
+            message: "FedEx pickup scheduled for next business day.",
         });
 
     } catch (error) {
@@ -211,9 +212,9 @@ function buildPickupEmailHtml({
               <td style="padding: 8px 0; color: #6b7280;">Tracking Number</td>
               <td style="padding: 8px 0; color: #111827; font-weight: 600;">${trackingNumber}</td>
             </tr>
-            <tr>
-              <td style="padding: 8px 0; color: #6b7280;">Pickup Ready Time</td>
-              <td style="padding: 8px 0; color: #111827; font-weight: 600;">${formattedReadyTime}</td>
+             <tr>
+               <td style="padding: 8px 0; color: #6b7280;">Pickup Ready Time</td>
+               <td style="padding: 8px 0; color: #111827; font-weight: 600;">${formattedReadyTime}  This can be changed by the courier. </td>
             </tr>
             <tr>
               <td style="padding: 8px 0; color: #6b7280;">Pickup Address</td>
@@ -228,7 +229,7 @@ function buildPickupEmailHtml({
 
           <div style="background-color: #fff7e6; border-left: 4px solid #f59e0b; padding: 12px 16px; border-radius: 4px; margin: 20px 0;">
             <p style="margin: 0; color: #92400e; font-size: 14px;">
-              ⏰ The courier may arrive anytime up until <strong>8:00 PM</strong> on the pickup day.
+              ⏰ The courier may arrive anytime  on the pickup day.
               Please make sure your package is ready and accessible at the front of the location.
             </p>
           </div>
@@ -248,3 +249,9 @@ function buildPickupEmailHtml({
     </div>
   `;
 }
+
+
+
+
+
+

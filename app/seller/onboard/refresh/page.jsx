@@ -17,7 +17,13 @@ export default function OnboardRefresh() {
         email: session?.user?.email,
       }),
     });
-    const { url } = await res.json();
+      const { url } = await res.json();
+      if (!res.ok || !url) {
+    alert("Could not generate a new onboarding link. Please try again.");
+    setLoading(false);
+    return;
+  }
+  
     window.location.href = url;
   }
   // optional but better UX — auto-retry on mount
