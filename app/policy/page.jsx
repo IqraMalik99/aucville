@@ -13,7 +13,7 @@ const SECTIONS = [
     title: "Eligibility & your account",
     points: [
       "You must be 18 or older to bid, sell, or hold an account.",
-      "Sellers connect a Stripe account at signup to receive payouts — no listing goes live without one.",
+      "Sellers connect a Stripe account at signup to receive payouts for completed sales.",
       "One account per person. Extra accounts used to inflate bids on your own listings will be closed.",
     ],
   },
