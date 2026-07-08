@@ -254,20 +254,53 @@ export default function LiveAuctionCards() {
         }
         .lac-h2 em { font-style: normal;  }
 
-        .lac-view-all {
-          flex-shrink: 0;
-          display: inline-flex; align-items: center; gap: 6px;
-          padding: 10px 20px;
-          border: 1.5px solid #D1D5DB; border-radius: 10px;
-          font-size: 13px; font-weight: 500;
-          color: #374151; background: #fff;
-          cursor: pointer; font-family: inherit;
-          transition: border-color .18s, color .18s, background .18s;
-          text-decoration: none;
-        }
-        .lac-view-all:hover {
-          border-color: #16a34a; color: #15803d; background: #f0fdf4;
-        }
+.lac-view-all {
+  flex-shrink: 0;
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 2px;
+  border: none; background: none;
+  font-size: 13.5px; font-weight: 600;
+  color: #16a34a;
+  cursor: pointer; font-family: inherit;
+  text-decoration: none;
+  white-space: nowrap;
+  position: relative;
+}
+.lac-view-all::after {
+  content: '';
+  position: absolute;
+  left: 0; bottom: 2px;
+  width: 100%; height: 1.5px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform .25s ease;
+}
+.lac-view-all:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+.lac-view-all:hover { color: #15803d; }
+.lac-view-all svg,
+.lac-view-all span.arrow {
+  transition: transform .2s ease;
+  display: inline-block;
+}
+.lac-view-all:hover .arrow {
+  transform: translateX(3px);
+}
+
+@media (max-width: 640px) {
+  .lac-view-all {
+    font-size: 12.5px;
+  }
+}
+
+@media (max-width: 400px) {
+  .lac-view-all {
+    font-size: 12px;
+  }
+}
 
         /* grid — always 4 columns on desktop */
         .lac-grid {
@@ -456,16 +489,13 @@ export default function LiveAuctionCards() {
           {/* header */}
           <div ref={headerRef} className={`lac-header ${headerVisible ? "lac-hdr-visible" : ""}`}>
             <div>
-              <div className="lac-eyebrow">
-                <span className="lac-eyebrow-dot" />
-                Happening right now
-              </div>
+            
               <h2 className="lac-h2">
                 Live <em className="accent-green">Auctions</em>
               </h2>
             </div>
             <button className="lac-view-all" onClick={() => router.push("/auction")}>
-              Browse all auctions ↗
+              Browse all auctions <span className="arrow">↗</span>
             </button>
           </div>
 

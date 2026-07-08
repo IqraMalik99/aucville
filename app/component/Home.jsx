@@ -493,15 +493,7 @@ export default function Hero() {
             animate={visible ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.6, ease: [0.22, 0.68, 0, 1.1] }}
           >
-            <motion.div
-              className="lot-eyebrow"
-              initial={{ opacity: 0, y: 12 }}
-              animate={visible ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.55, delay: 0.05 }}
-            >
-              <span className="lot-sep" />
-              <span className="lot-text"><span className="live-dot" />Auction floor open now</span>
-            </motion.div>
+           
 
             <motion.h1
               className="hero-h1"
