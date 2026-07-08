@@ -67,6 +67,7 @@ export default function Navbar() {
           -webkit-backdrop-filter: blur(20px) saturate(180%);
           border-bottom: 1px solid rgba(82,183,136,0.14);
           transition: box-shadow .25s ease, background .25s ease;
+          overflow: visible; /* keep dropdown from being clipped */
         }
         .topbar.scrolled {
           background: rgba(255,255,255,0.92);
@@ -263,11 +264,10 @@ export default function Navbar() {
       `}</style>
 
       {/* ── Top bar ── */}
-      <header   style={{
-    backgroundColor: "white",
-    overflowX: "hidden",
-  }}
-   className={`topbar${scrolled ? " scrolled" : ""}`}>
+      <header
+        style={{ backgroundColor: "white" }}
+        className={`topbar${scrolled ? " scrolled" : ""}`}
+      >
 
         {/* Logo */}
         <div className="logo-wrap" onClick={() => router.push("/")}>
