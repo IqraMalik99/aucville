@@ -42,7 +42,7 @@ const SECTIONS = [
     eyebrow: "Once the gavel falls",
     title: "Seller shipping",
     points: [
-      "All lots ship via FedEx within 5 business days of payment, with valid tracking — every time.",
+      "All lots ship via FedEx within 5 to 10 business days of payment, with valid tracking — every time.",
       "Buyer and seller are each responsible for the shipping address and contact number on file being correct — Aucville does not verify or edit this information for either party.",
       "Lost, delayed, or misdelivered packages caused by an incorrect address or contact detail are not Aucville's responsibility — that risk sits with whichever party supplied the wrong information.",
       "Not shipping a paid order is treated seriously: expect account suspension pending review, and confirmed non-shipment can lead to legal action to recover the buyer's funds and damages.",
@@ -53,7 +53,7 @@ const SECTIONS = [
     eyebrow: "What we keep, what you keep",
     title: "Fees & payout timing",
     points: [
-      "Aucville takes a 7% commission on the final sale price — only on completed sales.",
+      "Aucville takes a 7% fee on the final sale price from sellers — only on completed sales.",
       "Payout lands in your Stripe account 10–20 days after FedEx confirms delivery.",
       "Stripe's standard processing fees apply on top and are shown before you accept a payout.",
     ],
@@ -397,7 +397,7 @@ export default function PolicyPage() {
             <p className="policy-footer-text">
               Creating an account means you accept all seven sections above —
               including FedEx shipping via the address and contact info you provide,
-              the 7% seller commission, and the 10–20 day payout window.
+              the 7% seller fee, and the 10–20 day payout window.
             </p>
             <label className="agree-row">
               <input

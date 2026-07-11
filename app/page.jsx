@@ -6,6 +6,7 @@ import Cta from './component/Cta'
 import Footer from './component/Footer'
 import WelcomePopup from './component/Welcome'
 import Image from "./component/Image"
+import Contact from './component/Contact'
 export default function page() {
   return (
     <div 
@@ -21,6 +22,7 @@ export default function page() {
 
     <Liveauction/>
         <Image/>
+        <Contact/>
     <Cta/>
     <Footer/>
     </div>
